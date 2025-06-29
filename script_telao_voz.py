@@ -21,18 +21,15 @@ def resource_path(relative_path):
 COLOR_BACKGROUND = "#FEFDEE"
 COLOR_HEADER_BG = "#B91C1C"
 COLOR_HEADER_FG = "#FFFFFF"
-# ... (outras cores e fontes) ...
 COLOR_CURRENT_NUM_FG = "#1E293B"
 COLOR_BOARD_BG = "transparent"
 COLOR_BOARD_NUM_CALLED_BG = "#FBBF24"
 COLOR_BOARD_NUM_CALLED_FG = "#422006"
 COLOR_BOARD_NUM_WAITING_BG = "#FFFFFF"
 COLOR_BOARD_NUM_WAITING_FG = "#64748B"
-
 FONT_HEADER = ("Arial Rounded MT Bold", 60, "bold")
 FONT_CURRENT_NUM = ("Arial Rounded MT Bold", 280, "bold")
 FONT_BOARD_NUM = ("Arial Rounded MT Bold", 22, "bold")
-
 
 # --- DICIONÁRIO OTIMIZADO PARA RECONHECIMENTO DE VOZ ---
 def build_recognition_dictionary():
@@ -40,8 +37,6 @@ def build_recognition_dictionary():
     units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"]
     teens = ["dez", "onze", "doze", "treze", "catorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"]
     tens = ["", "dez", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta"]
-    
-    # Mapeia números de 1 a 75
     for i in range(1, 76):
         if i < 10: word = units[i]
         elif i < 20: word = teens[i-10]
@@ -50,28 +45,21 @@ def build_recognition_dictionary():
             if unit == 0: word = tens[ten]
             else: word = f"{tens[ten]} e {units[unit]}"
         word_map[word] = i
-        # Adiciona variações comuns (ex: "vinte cinco" em vez de "vinte e cinco")
         word_map[word.replace(" e ", " ")] = i
-
-    # Adiciona letras do bingo
     letters = {'b': 'bê', 'i': 'i', 'n': 'ene', 'g': 'gê', 'o': 'o'}
     for key, name in letters.items():
         word_map[name] = key
-
     return word_map
-
 RECOGNITION_MAP = build_recognition_dictionary()
 
-
 class BigScreenWindow(Toplevel):
-    # (Esta classe não muda, é a mesma da versão anterior)
     def __init__(self, master):
         super().__init__(master)
         self.title("Telão do Bingo")
         self.attributes('-fullscreen', True)
         self.configure(bg=COLOR_BACKGROUND)
         try:
-            logo_path = resource_path("parish_logo.png")
+            logo_path = resource_path("Logo_Paróquia_ Alta_Definicao.png")
             pil_logo = Image.open(logo_path)
             self.logo_image = ctk.CTkImage(light_image=pil_logo, size=(120, 150))
             logo_label = ctk.CTkLabel(self, image=self.logo_image, text="", fg_color="transparent", bg_color=COLOR_BACKGROUND)
@@ -94,7 +82,6 @@ class BigScreenWindow(Toplevel):
                                  fg_color=COLOR_BOARD_NUM_WAITING_BG, text_color=COLOR_BOARD_NUM_WAITING_FG,
                                  corner_radius=28)
             self.board_labels[i] = label
-
     def animate_number(self, new_number):
         animation_numbers = list(range(1, 76))
         def update_animation(step=0):
@@ -104,7 +91,6 @@ class BigScreenWindow(Toplevel):
             else:
                 self.current_number_label.configure(text=f"{new_number:02d}")
         update_animation()
-
     def update_board(self, number):
         if number in self.board_labels:
             label = self.board_labels[number]
@@ -112,49 +98,35 @@ class BigScreenWindow(Toplevel):
             row = (number - 1) // 15
             col = (number - 1) % 15
             label.grid(row=row, column=col, padx=4, pady=4)
-
     def clear_board(self):
         self.current_number_label.configure(text="--")
         for label in self.board_labels.values():
             label.grid_forget()
 
-
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Painel de Controle do Bingo")
-        self.geometry("450x450") # Um pouco mais alto para o status da voz
-        
+        self.geometry("450x450")
         self.configure(fg_color=COLOR_BACKGROUND)
         self.called_numbers = set()
-        
-        # Atributos para reconhecimento de voz
         self.recognizer = None
         self.microphone = None
         self.is_listening = False
         self.stop_listening_callback = None
-
         ctk.CTkLabel(self, text="Controle do Sorteio", font=("Arial", 22, "bold"), text_color=COLOR_CURRENT_NUM_FG).pack(pady=10)
-        
-        # Botão de controle do microfone
         self.listen_button = ctk.CTkButton(self, text="▶️ Iniciar Reconhecimento de Voz", command=self.toggle_listening, height=40)
         self.listen_button.pack(pady=10)
-        
-        # Status do que foi ouvido
         status_frame = ctk.CTkFrame(self, fg_color="transparent")
         status_frame.pack(pady=5)
         ctk.CTkLabel(status_frame, text="Ouvido:").pack(side="left")
         self.last_heard_text_label = ctk.CTkLabel(status_frame, text="...", font=("Arial", 12, "italic"), text_color="#64748B")
         self.last_heard_text_label.pack(side="left", padx=5)
-
-        # Número interpretado
         interpret_frame = ctk.CTkFrame(self, fg_color="transparent")
         interpret_frame.pack(pady=5)
         ctk.CTkLabel(interpret_frame, text="Número Interpretado:").pack(side="left")
         self.interpreted_number_label = ctk.CTkLabel(interpret_frame, text="--", font=("Arial", 16, "bold"))
         self.interpreted_number_label.pack(side="left", padx=5)
-
-        # Correção manual
         manual_frame = ctk.CTkFrame(self, fg_color="transparent")
         manual_frame.pack(pady=10)
         ctk.CTkLabel(manual_frame, text="Correção Manual:").grid(row=0, column=0, padx=5)
@@ -162,15 +134,12 @@ class App(ctk.CTk):
         self.manual_entry.grid(row=0, column=1, padx=5)
         self.manual_entry.bind("<Return>", self.confirm_manual_number)
         ctk.CTkButton(manual_frame, text="Anunciar", command=self.confirm_manual_number, fg_color=COLOR_HEADER_BG, hover_color="#8c1c1c").grid(row=0, column=2, padx=5)
-
         self.clear_button = ctk.CTkButton(self, text="Limpar Telão e Reiniciar Jogo", command=self.clear_all, fg_color="#64748B", hover_color="#475569")
         self.clear_button.pack(pady=10)
-
-        # Rodapé
         footer_frame = ctk.CTkFrame(self, fg_color="transparent")
         footer_frame.pack(side="bottom", fill="x", pady=(5, 10))
         try:
-            logo_path = resource_path("parish_logo.png")
+            logo_path = resource_path("Logo_Paróquia_ Alta_Definicao.png")
             logo_image = ctk.CTkImage(Image.open(logo_path), size=(40, 50))
             logo_label = ctk.CTkLabel(footer_frame, image=logo_image, text="")
             logo_label.pack()
@@ -178,14 +147,11 @@ class App(ctk.CTk):
             print(f"Erro ao carregar a logo no painel: {e}")
         signature_label = ctk.CTkLabel(footer_frame, text="por Victor Manuel", font=("Arial", 8), text_color="#666666")
         signature_label.pack()
-
         self.big_screen = BigScreenWindow(self)
         self.manual_entry.focus()
-        
         self.initialize_audio()
 
     def initialize_audio(self):
-        """Prepara os objetos de áudio."""
         try:
             self.recognizer = sr.Recognizer()
             self.microphone = sr.Microphone()
@@ -193,19 +159,50 @@ class App(ctk.CTk):
             print(f"Erro ao inicializar áudio: {e}")
             self.listen_button.configure(state="disabled", text="Erro de Microfone")
 
+    # --- FUNÇÃO ATUALIZADA ---
     def find_number_in_text(self, text):
         text = text.lower().strip()
-        # Procura por números por extenso
-        for word, number in RECOGNITION_MAP.items():
+        
+        # 1. Busca por números por extenso
+        sorted_words = sorted([k for k, v in RECOGNITION_MAP.items() if isinstance(v, int)], key=len, reverse=True)
+        for word in sorted_words:
             if re.search(r'\b' + re.escape(word) + r'\b', text):
-                return number
-        # Procura por dígitos numéricos
+                return RECOGNITION_MAP[word]
+        
+        # 2. Busca por dígitos numéricos
         nums = re.findall(r'\d+', text)
         if nums:
             try:
                 num = int("".join(nums))
                 if 1 <= num <= 75: return num
             except ValueError: pass
+
+        # 3. Lógica para "dígito a dígito"
+        words = text.split()
+        potential_number = ""
+        digit_map = {
+            'zero': '0', 'um': '1', 'dois': '2', 'três': '3', 'quatro': '4', 'cinco': '5',
+            'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9'
+        }
+        temp_num_str = ""
+        for word in words:
+            if word in digit_map:
+                temp_num_str += digit_map[word]
+            else: # Se não for um dígito, e tivermos algo, processa.
+                if temp_num_str:
+                    potential_number = temp_num_str
+                temp_num_str = "" # Reseta para a próxima sequência
+
+        if temp_num_str: # Pega a última sequência de dígitos
+             potential_number = temp_num_str
+
+        if potential_number:
+            try:
+                num = int(potential_number)
+                if 1 <= num <= 75:
+                    return num
+            except ValueError: pass
+        
         return None
 
     def process_new_number(self, number):
@@ -241,7 +238,6 @@ class App(ctk.CTk):
         if not self.recognizer or not self.microphone:
             print("Dispositivos de áudio não inicializados.")
             return
-
         if self.is_listening:
             self.is_listening = False
             self.listen_button.configure(text="▶️ Iniciar Reconhecimento de Voz")
@@ -251,17 +247,13 @@ class App(ctk.CTk):
         else:
             self.is_listening = True
             self.listen_button.configure(text="⏸️ Parar Reconhecimento")
-            # Inicia uma thread separada para a calibração, para não travar a UI
-            threading.Thread(target=self.start_background_listening).start()
+            threading.Thread(target=self.start_background_listening, daemon=True).start()
 
     def start_background_listening(self):
         print("Calibrando para ruído ambiente...")
         with self.microphone as source:
             self.recognizer.adjust_for_ambient_noise(source, duration=1)
         print("Calibração concluída. Ouvindo em segundo plano...")
-        
-        # Inicia o reconhecimento em background
-        # Usar model="model" instrui o SpeechRecognition a usar o Vosk com a pasta local
         self.stop_listening_callback = self.recognizer.listen_in_background(
             self.microphone, self.audio_callback, phrase_time_limit=4
         )
@@ -269,22 +261,18 @@ class App(ctk.CTk):
     def audio_callback(self, recognizer, audio):
         if not self.is_listening: return
         try:
-            # A biblioteca agora usa o Vosk por trás dos panos
             result_json = recognizer.recognize_vosk(audio, language='pt')
             result_dict = json.loads(result_json)
             heard_text = result_dict.get("text", "")
-            
             if heard_text:
                 print(f"Vosk ouviu: '{heard_text}'")
                 self.after(0, self.last_heard_text_label.configure, {"text": f'"{heard_text}"'})
-                
                 number = self.find_number_in_text(heard_text)
                 if number:
                     self.after(0, self.interpreted_number_label.configure, {"text": str(number)})
                     self.after(0, self.process_new_number, number)
                 else:
                     self.after(0, self.interpreted_number_label.configure, {"text": "--"})
-
         except sr.UnknownValueError:
             print("Vosk não conseguiu entender o áudio.")
         except sr.RequestError as e:
