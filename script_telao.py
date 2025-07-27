@@ -4,6 +4,10 @@ from PIL import Image
 import random
 import os
 import sys
+import speech_recognition as sr
+import threading
+import json
+import re
 
 def resource_path(relative_path):
     try:
@@ -16,70 +20,69 @@ COLOR_BACKGROUND = "#FEFDEE"
 COLOR_HEADER_BG = "#B91C1C"
 COLOR_HEADER_FG = "#FFFFFF"
 COLOR_CURRENT_NUM_FG = "#1E293B"
+COLOR_BOARD_BG = "transparent"
 COLOR_BOARD_NUM_CALLED_BG = "#FBBF24"
 COLOR_BOARD_NUM_CALLED_FG = "#422006"
 COLOR_BOARD_NUM_WAITING_BG = "#FFFFFF"
-COLOR_BOARD_NUM_WAITING_FG = "#CBD5E1"
+COLOR_BOARD_NUM_WAITING_FG = "#64748B"
 
-FONT_HEADER = ("Arial Rounded MT Bold", 40, "bold")
-FONT_CURRENT_NUM = ("Arial Rounded MT Bold", 500, "bold")
-FONT_BOARD_NUM = ("Arial Rounded MT Bold", 18, "bold")
+FONT_HEADER = ("Arial Rounded MT Bold", 60, "bold")
+FONT_CURRENT_NUM = ("Arial Rounded MT Bold", 280, "bold")
+FONT_BOARD_NUM = ("Arial Rounded MT Bold", 22, "bold")
+
+def build_recognition_dictionary():
+    word_map = {}
+    units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"]
+    teens = ["dez", "onze", "doze", "treze", "catorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"]
+    tens = ["", "dez", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta"]
+    for i in range(1, 75 + 1):
+        if i < 10:
+            word = units[i]
+        elif i < 20:
+            word = teens[i - 10]
+        else:
+            ten, unit = divmod(i, 10)
+            if unit == 0:
+                word = tens[ten]
+            else:
+                word = f"{tens[ten]} e {units[unit]}"
+        word_map[word] = i
+        word_map[word.replace(" e ", " ")] = i
+    word_map["meia"] = 6
+    return word_map
+
+RECOGNITION_MAP = build_recognition_dictionary()
 
 class BigScreenWindow(Toplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("Telão do Bingo")
-        self.geometry("1920x1080")
+        self.attributes('-fullscreen', True)
         self.configure(bg=COLOR_BACKGROUND)
-        self.resizable(True, True)
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        self.geometry(f"{width}x{height}+{x}+{y}")
-
-        self.current_number_label = ctk.CTkLabel(self, text="--", font=FONT_CURRENT_NUM,
-                                                 text_color=COLOR_CURRENT_NUM_FG,
-                                                 fg_color="transparent", bg_color=COLOR_BACKGROUND)
-        self.current_number_label.place(relx=0.75, rely=0.45, anchor="center")
-
         try:
-            logo_path = resource_path("Logo_Paróquia_ Alta_Definicao.png")
+            logo_path = resource_path("parish_logo.png")
             pil_logo = Image.open(logo_path)
             self.logo_image = ctk.CTkImage(light_image=pil_logo, size=(120, 150))
-            logo_label = ctk.CTkLabel(self, image=self.logo_image, text="",
-                                      fg_color="transparent", bg_color=COLOR_BACKGROUND)
-            logo_label.place(relx=0.75, rely=0.8, anchor="center")
+            logo_label = ctk.CTkLabel(self, image=self.logo_image, text="", fg_color="transparent", bg_color=COLOR_BACKGROUND)
+            logo_label.place(relx=0.02, rely=0.03, anchor="nw")
         except Exception as e:
             print(f"Erro ao carregar a logo no telão: {e}")
-
-        self.board_container = ctk.CTkFrame(self, fg_color="transparent", bg_color=COLOR_BACKGROUND)
-        self.board_container.place(relx=0.3, rely=0.5, anchor="center")
-
-        self.board_labels = {}
+        header_frame = ctk.CTkFrame(self, fg_color="transparent", bg_color=COLOR_BACKGROUND)
+        header_frame.pack(pady=(40, 20))
         headers = "BINGO"
-        ranges = {
-            'B': range(1, 16),
-            'I': range(16, 31),
-            'N': range(31, 46),
-            'G': range(46, 61),
-            'O': range(61, 76)
-        }
-
-        for col_index, letter in enumerate(headers):
-            ctk.CTkLabel(self.board_container, text=letter, font=FONT_HEADER, text_color=COLOR_HEADER_FG,
-                         fg_color=COLOR_HEADER_BG, width=100, height=80, corner_radius=10).grid(
-                row=0, column=col_index, padx=5, pady=(0, 10))
-
-            for row_index, number in enumerate(ranges[letter]):
-                label = ctk.CTkLabel(self.board_container, text=f"{number:02d}", font=FONT_BOARD_NUM, width=60, height=35,
-                                     fg_color=COLOR_BOARD_NUM_WAITING_BG, text_color=COLOR_BOARD_NUM_WAITING_FG,
-                                     corner_radius=8)
-                label.grid(row=row_index + 1, column=col_index, padx=5, pady=2)
-                self.board_labels[number] = label
+        for letter in headers:
+            ctk.CTkLabel(header_frame, text=letter, font=FONT_HEADER, text_color=COLOR_HEADER_FG,
+                         fg_color=COLOR_HEADER_BG, width=120, height=100, corner_radius=0).pack(side="left", padx=2)
+        self.current_number_label = ctk.CTkLabel(self, text="--", font=FONT_CURRENT_NUM, text_color=COLOR_CURRENT_NUM_FG, fg_color="transparent", bg_color=COLOR_BACKGROUND)
+        self.current_number_label.pack(fill="both", expand=True)
+        self.board_frame = ctk.CTkFrame(self, fg_color=COLOR_BOARD_BG, bg_color=COLOR_BACKGROUND)
+        self.board_frame.pack(pady=(0, 30), side="bottom", fill="x", padx=50)
+        self.board_labels = {}
+        for i in range(1, 76):
+            label = ctk.CTkLabel(self.board_frame, text=f"{i:02d}", font=FONT_BOARD_NUM, width=55, height=55,
+                                 fg_color=COLOR_BOARD_NUM_WAITING_BG, text_color=COLOR_BOARD_NUM_WAITING_FG,
+                                 corner_radius=28)
+            self.board_labels[i] = label
 
     def animate_number(self, new_number):
         animation_numbers = list(range(1, 76))
@@ -95,87 +98,174 @@ class BigScreenWindow(Toplevel):
         if number in self.board_labels:
             label = self.board_labels[number]
             label.configure(fg_color=COLOR_BOARD_NUM_CALLED_BG, text_color=COLOR_BOARD_NUM_CALLED_FG)
+            row = (number - 1) // 15
+            col = (number - 1) % 15
+            label.grid(row=row, column=col, padx=4, pady=4)
 
     def clear_board(self):
         self.current_number_label.configure(text="--")
         for label in self.board_labels.values():
-            label.configure(fg_color=COLOR_BOARD_NUM_WAITING_BG, text_color=COLOR_BOARD_NUM_WAITING_FG)
+            label.grid_forget()
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Painel de Controle do Bingo")
-        self.geometry("400x350")
+        self.geometry("450x450")
         self.configure(fg_color=COLOR_BACKGROUND)
-        ctk.set_default_color_theme("blue")
         self.called_numbers = set()
-
-        ctk.CTkLabel(self, text="Controle do Sorteio", font=("Arial", 22, "bold"),
-                     text_color=COLOR_CURRENT_NUM_FG).pack(pady=15)
-
+        self.recognizer = None
+        self.microphone = None
+        self.is_listening = False
+        self.stop_listening_callback = None
+        self.audio_ready = threading.Event()
+        ctk.CTkLabel(self, text="Controle do Sorteio", font=("Arial", 22, "bold"), text_color=COLOR_CURRENT_NUM_FG).pack(pady=10)
+        self.listen_button = ctk.CTkButton(self, text="Inicializando Áudio...", command=self.toggle_listening, height=40, state="disabled")
+        self.listen_button.pack(pady=10)
+        status_frame = ctk.CTkFrame(self, fg_color="transparent")
+        status_frame.pack(pady=5)
+        ctk.CTkLabel(status_frame, text="Ouvido:").pack(side="left")
+        self.last_heard_text_label = ctk.CTkLabel(status_frame, text="...", font=("Arial", 12, "italic"), text_color="#64748B")
+        self.last_heard_text_label.pack(side="left", padx=5)
+        interpret_frame = ctk.CTkFrame(self, fg_color="transparent")
+        interpret_frame.pack(pady=5)
+        ctk.CTkLabel(interpret_frame, text="Número Interpretado:").pack(side="left")
+        self.interpreted_number_label = ctk.CTkLabel(interpret_frame, text="--", font=("Arial", 16, "bold"))
+        self.interpreted_number_label.pack(side="left", padx=5)
         manual_frame = ctk.CTkFrame(self, fg_color="transparent")
-        manual_frame.pack(pady=5)
-
-        ctk.CTkLabel(manual_frame, text="Número Sorteado:", font=("Arial", 14)).pack()
-        self.manual_entry = ctk.CTkEntry(manual_frame, width=150, font=("Arial", 24, "bold"), justify="center")
-        self.manual_entry.pack(pady=5)
+        manual_frame.pack(pady=10)
+        ctk.CTkLabel(manual_frame, text="Correção Manual:").grid(row=0, column=0, padx=5)
+        self.manual_entry = ctk.CTkEntry(manual_frame, width=80, font=("Arial", 16, "bold"), justify="center")
+        self.manual_entry.grid(row=0, column=1, padx=5)
         self.manual_entry.bind("<Return>", self.confirm_manual_number)
-
-        self.confirm_button = ctk.CTkButton(manual_frame, text="Anunciar Número", command=self.confirm_manual_number,
-                                            height=40, fg_color=COLOR_HEADER_BG, hover_color="#8c1c1c")
-        self.confirm_button.pack(pady=10)
-
-        self.clear_button = ctk.CTkButton(self, text="Limpar Telão e Reiniciar Jogo", command=self.clear_all,
-                                          fg_color="#64748B", hover_color="#475569")
+        ctk.CTkButton(manual_frame, text="Anunciar", command=self.confirm_manual_number, fg_color=COLOR_HEADER_BG, hover_color="#8c1c1c").grid(row=0, column=2, padx=5)
+        self.clear_button = ctk.CTkButton(self, text="Limpar Telão e Reiniciar Jogo", command=self.clear_all, fg_color="#64748B", hover_color="#475569")
         self.clear_button.pack(pady=10)
-
         footer_frame = ctk.CTkFrame(self, fg_color="transparent")
         footer_frame.pack(side="bottom", fill="x", pady=(5, 10))
-
         try:
-            logo_path = resource_path("Logo_Paróquia_ Alta_Definicao.png")
+            logo_path = resource_path("parish_logo.png")
             logo_image = ctk.CTkImage(Image.open(logo_path), size=(40, 50))
             logo_label = ctk.CTkLabel(footer_frame, image=logo_image, text="")
             logo_label.pack()
         except Exception as e:
-            print(f"Erro ao carregar a logo no painel de controle: {e}")
-
-        signature_label = ctk.CTkLabel(footer_frame, text="por Victor Manuel", font=("Arial", 8),
-                                       text_color="#666666")
+            print(f"Erro ao carregar a logo no painel: {e}")
+        signature_label = ctk.CTkLabel(footer_frame, text="por Victor Manuel", font=("Arial", 8), text_color="#666666")
         signature_label.pack()
-
         self.big_screen = BigScreenWindow(self)
         self.manual_entry.focus()
+        threading.Thread(target=self.initialize_audio_async, daemon=True).start()
+
+    def initialize_audio_async(self):
+        try:
+            self.recognizer = sr.Recognizer()
+            self.microphone = sr.Microphone()
+            with self.microphone as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            self.audio_ready.set()
+            self.listen_button.configure(state="normal", text="▶️ Iniciar Reconhecimento")
+        except Exception as e:
+            print(f"ERRO CRÍTICO DE ÁUDIO: {e}")
+            self.listen_button.configure(text="Erro de Microfone", state="disabled")
+
+    def find_number_in_text(self, text):
+        text = text.lower().strip()
+        nums_found = re.findall(r'\d+', text)
+        if nums_found:
+            try:
+                num = int("".join(nums_found))
+                if 1 <= num <= 75:
+                    return num
+            except ValueError:
+                pass
+        sorted_words = sorted([k for k, v in RECOGNITION_MAP.items() if isinstance(v, int)], key=len, reverse=True)
+        for word in sorted_words:
+            if re.search(r'\b' + re.escape(word) + r'\b', text):
+                return RECOGNITION_MAP[word]
+        words = text.split()
+        digit_map = {
+            'zero': '0', 'um': '1', 'dois': '2', 'três': '3', 'quatro': '4', 'cinco': '5',
+            'seis': '6', 'meia': '6', 'sete': '7', 'oito': '8', 'nove': '9'
+        }
+        longest_digit_sequence = ""
+        current_sequence = ""
+        for word in words:
+            if word in digit_map:
+                current_sequence += digit_map[word]
+            else:
+                if len(current_sequence) > len(longest_digit_sequence):
+                    longest_digit_sequence = current_sequence
+                current_sequence = ""
+        if len(current_sequence) > len(longest_digit_sequence):
+            longest_digit_sequence = current_sequence
+        if longest_digit_sequence:
+            try:
+                num = int(longest_digit_sequence)
+                if 1 <= num <= 75:
+                    return num
+            except ValueError:
+                pass
+        return None
+
+    def process_new_number(self, number):
+        if number and 1 <= number <= 75:
+            self.big_screen.animate_number(number)
+            if number not in self.called_numbers:
+                self.called_numbers.add(number)
+                self.big_screen.update_board(number)
 
     def confirm_manual_number(self, event=None):
         try:
-            num_str = self.manual_entry.get()
-            if not num_str:
-                return
-            num = int(num_str)
-            if not (1 <= num <= 75):
-                print("Número fora do intervalo (1-75).")
-                self.manual_entry.delete(0, 'end')
-                return
-
-            self.big_screen.animate_number(num)
-            self.big_screen.update_board(num)
-
-            if num not in self.called_numbers:
-                self.called_numbers.add(num)
-                print(f"Anunciando número: {num}")
-            else:
-                print(f"Número {num} já foi sorteado (re-anunciando).")
-
+            num = int(self.manual_entry.get())
+            self.interpreted_number_label.configure(text=str(num))
+            self.process_new_number(num)
             self.manual_entry.delete(0, 'end')
-        except ValueError:
-            print("Entrada manual inválida.")
+        except (ValueError, TypeError):
             self.manual_entry.delete(0, 'end')
 
     def clear_all(self):
         self.called_numbers.clear()
         self.big_screen.clear_board()
-        print("Telão limpo. Novo jogo iniciado.")
+        self.interpreted_number_label.configure(text="--")
+        self.last_heard_text_label.configure(text="...")
+
+    def toggle_listening(self):
+        if not self.audio_ready.is_set():
+            return
+        if self.is_listening:
+            self.is_listening = False
+            self.listen_button.configure(text="▶️ Iniciar Reconhecimento")
+            if self.stop_listening_callback:
+                self.stop_listening_callback(wait_for_stop=False)
+        else:
+            self.is_listening = True
+            self.listen_button.configure(text="⏸️ Parar Reconhecimento")
+            threading.Thread(target=self.start_background_listening, daemon=True).start()
+
+    def start_background_listening(self):
+        self.stop_listening_callback = self.recognizer.listen_in_background(
+            self.microphone, self.audio_callback, phrase_time_limit=3
+        )
+
+    def audio_callback(self, recognizer, audio):
+        if not self.is_listening:
+            return
+        try:
+            result_json = recognizer.recognize_vosk(audio, language='pt')
+            result_dict = json.loads(result_json)
+            heard_text = result_dict.get("text", "")
+            if heard_text:
+                self.after(0, self.last_heard_text_label.configure, {"text": f'"{heard_text}"'})
+                number = self.find_number_in_text(heard_text)
+                if number:
+                    self.after(0, self.interpreted_number_label.configure, {"text": str(number)})
+                    self.after(0, self.process_new_number, number)
+                else:
+                    self.after(0, self.interpreted_number_label.configure, {"text": "--"})
+        except sr.UnknownValueError:
+            pass
+        except Exception as e:
+            print(f"Erro no callback de áudio: {e}")
 
 if __name__ == "__main__":
     app = App()
