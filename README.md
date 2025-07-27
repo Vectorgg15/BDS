@@ -5,7 +5,7 @@ Um sistema prático para exibir os números sorteados de um bingo em tempo real,
 <p align="center">
   <img src="https://img.shields.io/github/license/Vectorgg15/BDS?style=flat-square" />
   <img src="https://img.shields.io/github/languages/top/Vectorgg15/BDS?style=flat-square" />
-  <img src="https://img.shields.io/github/license/Vectorgg15/BDS?style=flat-square" />
+  <img src="https://img.shields.io/github/last-commit/Vectorgg15/BDS?style=flat-square" />
 </p>
 
 ---
