@@ -51,7 +51,7 @@ pip install -r requirements.txt
 ### 3. Execução
 
 ```bash
-python main.py
+python script_telao.py
 ```
 
 ---
