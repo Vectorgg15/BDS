@@ -46,3 +46,17 @@ Clone o repositório e instale as dependências:
 git clone https://github.com/Vectorgg15/BDS.git
 cd BDS
 pip install -r requirements.txt
+
+### 3. Execução
+
+python main.py
+
+## ⚙️ Como Funciona
+
+O programa inicia com a tela principal do bingo. Ao clicar no botão Sortear, um número aleatório entre 1 e 75 será exibido com destaque e registrado no histórico. A interface foi otimizada para ser visível de longe, ideal para eventos públicos.
+
+🧠 Dica: Para melhorar a visualização em um telão ou TV, pressione F11 para colocar a janela em tela cheia (dependendo do sistema operacional).
+
+## 🧑‍💻 Autor
+
+Desenvolvido por Victor Manuel com 💙 para tornar bingos mais organizados, modernos e interativos.
