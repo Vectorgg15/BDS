@@ -5,16 +5,13 @@ import random
 import os
 import sys
 
-# --- FUNÇÃO PARA ENCONTRAR ARQUIVOS EMPACOTADOS ---
 def resource_path(relative_path):
-    """ Retorna o caminho absoluto para o recurso, funcionando tanto no modo dev quanto no PyInstaller """
     try:
-        base_path = sys._MEIPASS  # Quando empacotado com PyInstaller
+        base_path = sys._MEIPASS
     except Exception:
-        base_path = os.path.abspath(".")  # Modo normal (dev)
+        base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-# --- CONFIGURAÇÕES DE DESIGN ---
 COLOR_BACKGROUND = "#FEFDEE"
 COLOR_HEADER_BG = "#B91C1C"
 COLOR_HEADER_FG = "#FFFFFF"
@@ -25,21 +22,16 @@ COLOR_BOARD_NUM_WAITING_BG = "#FFFFFF"
 COLOR_BOARD_NUM_WAITING_FG = "#CBD5E1"
 
 FONT_HEADER = ("Arial Rounded MT Bold", 40, "bold")
-FONT_CURRENT_NUM = ("Arial Rounded MT Bold", 250, "bold")
+FONT_CURRENT_NUM = ("Arial Rounded MT Bold", 500, "bold")
 FONT_BOARD_NUM = ("Arial Rounded MT Bold", 18, "bold")
-
 
 class BigScreenWindow(Toplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("Telão do Bingo")
-
-        # Janela grande, mas não fullscreen (permite arrastar pro projetor)
-        self.geometry("1280x720")
+        self.geometry("1920x1080")
         self.configure(bg=COLOR_BACKGROUND)
         self.resizable(True, True)
-
-        # Centraliza inicialmente
         self.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
@@ -49,13 +41,11 @@ class BigScreenWindow(Toplevel):
         y = (screen_height // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
 
-        # Número atual (à direita)
         self.current_number_label = ctk.CTkLabel(self, text="--", font=FONT_CURRENT_NUM,
                                                  text_color=COLOR_CURRENT_NUM_FG,
                                                  fg_color="transparent", bg_color=COLOR_BACKGROUND)
         self.current_number_label.place(relx=0.75, rely=0.45, anchor="center")
 
-        # Logo da paróquia (abaixo do número)
         try:
             logo_path = resource_path("Logo_Paróquia_ Alta_Definicao.png")
             pil_logo = Image.open(logo_path)
@@ -66,7 +56,6 @@ class BigScreenWindow(Toplevel):
         except Exception as e:
             print(f"Erro ao carregar a logo no telão: {e}")
 
-        # Quadro BINGO (à esquerda)
         self.board_container = ctk.CTkFrame(self, fg_color="transparent", bg_color=COLOR_BACKGROUND)
         self.board_container.place(relx=0.3, rely=0.5, anchor="center")
 
@@ -111,7 +100,6 @@ class BigScreenWindow(Toplevel):
         self.current_number_label.configure(text="--")
         for label in self.board_labels.values():
             label.configure(fg_color=COLOR_BOARD_NUM_WAITING_BG, text_color=COLOR_BOARD_NUM_WAITING_FG)
-
 
 class App(ctk.CTk):
     def __init__(self):
@@ -188,7 +176,6 @@ class App(ctk.CTk):
         self.called_numbers.clear()
         self.big_screen.clear_board()
         print("Telão limpo. Novo jogo iniciado.")
-
 
 if __name__ == "__main__":
     app = App()
