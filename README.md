@@ -51,11 +51,15 @@ pip install -r requirements.txt
 
 python main.py
 
+---
+
 ## ⚙️ Como Funciona
 
 O programa inicia com a tela principal do bingo. Ao clicar no botão Sortear, um número aleatório entre 1 e 75 será exibido com destaque e registrado no histórico. A interface foi otimizada para ser visível de longe, ideal para eventos públicos.
 
 🧠 Dica: Para melhorar a visualização em um telão ou TV, pressione F11 para colocar a janela em tela cheia (dependendo do sistema operacional).
+
+---
 
 ## 🧑‍💻 Autor
 
