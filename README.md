@@ -25,7 +25,7 @@
 ## 🖼️ Capturas de Tela
 
 <p align="center">
-  <img src="assets/telao_screenshot.png" alt="Tela principal do sistema" width="700"/>
+  <img src="assets/Screenshot_BDS.png" alt="Tela principal do sistema" width="700"/>
 </p>
 
 ---
