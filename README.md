@@ -53,6 +53,10 @@ python main.py
 
 ---
 
+## 📄 Arquivos e Formato
+
+Para gerar as cartelas, você precisará de dois arquivos: uma **Planilha Excel** com os dados e um **Modelo SVG** para o design.
+
 ## ⚙️ Como Funciona
 
 O programa inicia com a tela principal do bingo. Ao clicar no botão Sortear, um número aleatório entre 1 e 75 será exibido com destaque e registrado no histórico. A interface foi otimizada para ser visível de longe, ideal para eventos públicos.
