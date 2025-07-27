@@ -3,9 +3,15 @@
 Um sistema prático para exibir os números sorteados de um bingo em tempo real, ideal para telões, TVs ou projetores.
 
 <p align="center">
-  <img src="https://img.shields.io/github/LICENSE/Vectorgg15/BDS?style=flat-square" />
-  <img src="https://img.shields.io/github/languages/top/Vectorgg15/BDS?style=flat-square" />
-  <img src="https://img.shields.io/github/last-commit/Vectorgg15/BDS?style=flat-square" />
+  <a href="https://github.com/Vectorgg15/BDS/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Vectorgg15/BDS?style=flat-square" />
+  </a>
+  <a href="https://github.com/Vectorgg15/BDS">
+    <img src="https://img.shields.io/github/languages/top/Vectorgg15/BDS?style=flat-square" />
+  </a>
+  <a href="https://github.com/Vectorgg15/BDS/commits/main">
+    <img src="https://img.shields.io/github/last-commit/Vectorgg15/BDS?style=flat-square" />
+  </a>
 </p>
 
 ---
