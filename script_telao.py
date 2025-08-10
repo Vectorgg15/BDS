@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import Toplevel, messagebox
+from tkinter import messagebox # Toplevel não é mais necessário aqui
 from PIL import Image
 import random
 import os
@@ -39,11 +39,13 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-class BigScreenWindow(Toplevel):
+class BigScreenWindow(ctk.CTkToplevel): # <-- CORREÇÃO 1: Herdar de CTkToplevel
     def __init__(self, master):
         super().__init__(master)
         self.title("Telão do Bingo")
-        self.configure(bg=COLOR_BACKGROUND)
+        
+        # <-- CORREÇÃO 2: Usar fg_color para definir o fundo em CustomTkinter
+        self.configure(fg_color=COLOR_BACKGROUND) 
 
         # --- Multi-monitor setup ---
         self.setup_multiscreen()
@@ -52,7 +54,7 @@ class BigScreenWindow(Toplevel):
         # Label to display the large number being called
         self.current_number_label = ctk.CTkLabel(self, text="--", font=FONT_CURRENT_NUM,
                                                  text_color=COLOR_CURRENT_NUM_FG,
-                                                 fg_color="transparent", bg_color=COLOR_BACKGROUND)
+                                                 fg_color="transparent") # bg_color não é necessário se fg_color é transparent
         self.current_number_label.place(relx=0.75, rely=0.45, anchor="center")
 
         # Load and display the logo
@@ -61,17 +63,16 @@ class BigScreenWindow(Toplevel):
             pil_logo = Image.open(logo_path)
             self.logo_image = ctk.CTkImage(light_image=pil_logo, size=(120, 150))
             logo_label = ctk.CTkLabel(self, image=self.logo_image, text="",
-                                      fg_color="transparent", bg_color=COLOR_BACKGROUND)
+                                      fg_color="transparent")
             logo_label.place(relx=0.75, rely=0.8, anchor="center")
         except Exception as e:
             print(f"Erro ao carregar a logo no telão: {e}")
-            # Optionally, show an error on the window itself
             error_label = ctk.CTkLabel(self, text="Logo\nNão Encontrada", font=("Arial", 12))
             error_label.place(relx=0.75, rely=0.8, anchor="center")
 
 
         # Frame to hold the bingo board
-        self.board_container = ctk.CTkFrame(self, fg_color="transparent", bg_color=COLOR_BACKGROUND)
+        self.board_container = ctk.CTkFrame(self, fg_color="transparent")
         self.board_container.place(relx=0.3, rely=0.5, anchor="center")
 
         self.board_labels = {}
@@ -161,7 +162,7 @@ class App(ctk.CTk):
 
         self.confirm_button = ctk.CTkButton(manual_frame, text="Anunciar Número", command=self.confirm_manual_number,
                                             height=40, font=("Arial", 14, "bold"),
-                                            fg_color=COLOR_HEADER_BG, hover_color="#1a7899")
+                                            fg_color=COLOR_HEADER_BG, hover_color="#991b1b") #Ajustei o Hover
         self.confirm_button.pack(pady=10)
 
         self.clear_button = ctk.CTkButton(self, text="Limpar Telão e Reiniciar Jogo", command=self.clear_all,
@@ -186,12 +187,24 @@ class App(ctk.CTk):
         signature_label.pack()
 
         # --- Initialize the Big Screen ---
-        self.big_screen = BigScreenWindow(self)
+        self.big_screen = None # Inicia como None
+        self.after(100, self.open_big_screen) # Abre a tela grande um pouco depois para garantir que a principal está pronta
+
         self.manual_entry.focus()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+    def open_big_screen(self):
+        if self.big_screen is None or not self.big_screen.winfo_exists():
+            self.big_screen = BigScreenWindow(self)
+        else:
+            self.big_screen.focus()
 
     def confirm_manual_number(self, event=None):
         """Validates and sends the manually entered number to the big screen."""
+        if self.big_screen is None or not self.big_screen.winfo_exists():
+            messagebox.showerror("Erro", "A janela do Telão não está aberta.")
+            return
+
         try:
             num_str = self.manual_entry.get()
             if not num_str:
@@ -219,6 +232,10 @@ class App(ctk.CTk):
 
     def clear_all(self):
         """Clears the board and resets the game state."""
+        if self.big_screen is None or not self.big_screen.winfo_exists():
+            messagebox.showerror("Erro", "A janela do Telão não está aberta.")
+            return
+            
         self.called_numbers.clear()
         self.big_screen.clear_board()
         print("Telão limpo. Novo jogo iniciado.")
@@ -227,7 +244,8 @@ class App(ctk.CTk):
     def on_closing(self):
         """Ensure both windows close properly."""
         if messagebox.askokcancel("Sair", "Você tem certeza que quer fechar o programa?"):
-            self.big_screen.destroy()
+            if self.big_screen is not None:
+                self.big_screen.destroy()
             self.destroy()
 
 
